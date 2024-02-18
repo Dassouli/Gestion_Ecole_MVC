@@ -1,0 +1,86 @@
+                                                  
+<?php
+abstract class Model {
+public $id=0;
+// dÃĐclaration d'une variable qui va contenir des objets PDO
+private static $pdo=null;
+
+public function __construct()
+{ 
+if(self::$pdo==null)
+{
+$Var_env = parse_ini_file(".env");
+ // RÃĐcupÃĐrer les paramÃĻtres de connexion
+$dbConnection = $Var_env['DB_CONNECTION'];
+$dbHost = $Var_env['DB_HOST'];
+$dbDatabase = $Var_env['DB_DATABASE'];
+$dbUsername = $Var_env['DB_USERNAME'];
+$dbPassword = $Var_env['DB_PASSWORD'];
+self::$pdo=new PDO($dbConnection.':host='.$dbHost.';dbname='.$dbDatabase,
+                      $dbUsername,$dbPassword);   
+   }
+}
+
+
+public function save(){
+$data=(array) $this;
+$req="";
+if($this->id==0){
+  $req="insert into ".get_class($this)." (";
+      $fields=$values="";
+      foreach($data as $key=>$value){
+         $fields.=$key.",";
+         $values.=":$key,";       
+      }
+      $fields=substr($fields,0,-1);
+      $values=substr($values,0,-1);
+      $req.=$fields.") values (".$values.")";
+}
+else
+{
+ $req="update ".get_class($this)." set ";
+       foreach($data as $key=>$value)
+	   if($key!='id')
+           $req.=$key."=?,";
+           $req=substr($req,0,-1);
+           $req.=" where $key=?";
+           $data=array_values($data);   
+}
+$stm=self::$pdo->prepare($req);  
+$stm->execute($data); 
+}
+	
+
+public function delete()
+{
+   $req="delete from ".get_class($this)." where id=?";
+   $stm=self::$pdo->prepare($req);   
+   return $stm->execute(array($this->id));   
+}
+	
+
+public static function find($id)
+{
+   $req="select * from ".get_called_class()." where id=?";
+   $classe=get_called_class();
+   $E=new $classe();
+   $stm=self::$pdo->prepare($req);  
+   $stm->execute(array($id)); 
+   $res=$stm->fetch(PDO::FETCH_ASSOC);
+   foreach($res as $key=>$value)
+      $E->$key=$value;
+   return $E;
+}
+
+
+public static function All()
+{
+ $req="select * from ".get_called_class();
+   $classe=get_called_class();
+   new $classe();
+   $stm=self::$pdo->prepare($req);  
+   $stm->execute(); 
+  return $stm->fetchAll(PDO::FETCH_ASSOC);
+}
+}
+?>
